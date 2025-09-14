@@ -15,8 +15,8 @@ import auth from "./middleware/auth.js";
 dotenv.config();
 
 const app = express();
-
 const upload = multer({ storage: multer.memoryStorage() });
+
 connectCloudinary();
 app.use(bodyParser.json());
 app.use(express.json());
@@ -30,6 +30,7 @@ app.use(
 app.use(cookieParser());
 app.use(logger);
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/vehicles", upload.array("photos", 10), vehicleRoutes);
 app.use("/api/booking", auth, bookingRoutes);
@@ -42,19 +43,8 @@ app.get("/", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+// ✅ Connect to DB once when the serverless function initializes
+await connectDB();
 
-const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(
-        `${process.env.NAME} v${process.env.VERSION} running on http://localhost:${PORT} [${process.env.NODE_ENV}]`
-      );
-    });
-  } catch (err) {
-    console.error("Database connection failed:", err.message);
-  }
-};
-
-startServer();
+// ✅ Export app instead of listening (required for Vercel serverless)
+export default app;
