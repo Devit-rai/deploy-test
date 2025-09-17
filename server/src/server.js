@@ -1,50 +1,51 @@
+import bodyParser from "body-parser";
 import express from "express";
-import dotenv from "dotenv";
+import multer from "multer";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { connectDB } from "./config/db.js";
+
+import auth from "./middleware/auth.js";
 import authRoutes from "./routes/authRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
-import logger from "./middleware/logger.js";
-import connectCloudinary from "./config/cloudinary.js";
-import bodyParser from "body-parser";
-import multer from "multer";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
-import auth from "./middleware/auth.js";
-
-dotenv.config();
+import config from "./config/config.js";
+import connectCloudinary from "./config/cloudinary.js";
+import { connectDB } from "./config/db.js";
+import logger from "./middleware/logger.js";
 
 const app = express();
+
 const upload = multer({ storage: multer.memoryStorage() });
 
+connectDB();
 connectCloudinary();
-app.use(bodyParser.json());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: config.corsOrigin,
     credentials: true,
   })
 );
+app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(logger);
 
-// Routes
+app.get("/", (req, res) => {
+  res.json({
+    name: config.name,
+    version: config.version,
+    status: "OK",
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/vehicles", upload.array("photos", 10), vehicleRoutes);
 app.use("/api/booking", auth, bookingRoutes);
 
-app.get("/", (req, res) => {
-  res.json({
-    name: process.env.NAME,
-    version: process.env.VERSION,
-    message: "Server is running",
-  });
+app.listen(config.port, () => {
+  console.log(
+    `${config.name} v${config.version} running on http://localhost:${config.port} [${config.nodeEnv}]`
+  );
 });
-
-// ✅ Connect to DB once when the serverless function initializes
-await connectDB();
-
-// ✅ Export app instead of listening (required for Vercel serverless)
-export default app;
